@@ -23,13 +23,38 @@ import urllib
 import argparse
 
 
+def url_sort_key(url):
+    """Used to order the urls in increasing order by 2nd word if present."""
+    match = re.search(r'-(\w+)-(\w+)\.\w+', url)
+    if match:
+        return match.group(2)
+    else:
+        return url
+
+
 def read_urls(filename):
     """Returns a list of the puzzle urls from the given log file,
     extracting the hostname from the filename itself.
     Screens out duplicate urls and returns the urls sorted into
     increasing order."""
-    # +++your code here+++
-    pass
+
+    underbar = filename.index('_')
+    host = filename[underbar + 1:]
+
+    url_dict = {}
+
+    f = open(filename)
+    for line in f:
+
+        match = re.search(r'"GET ([^ ]+)', line)
+
+        if match:
+            path = match.group(1)
+
+            if 'puzzle' in path:
+                url_dict['http://' + host + path] = 1
+
+    return sorted(url_dict.keys(), key=url_sort_key)
 
 
 def download_images(img_urls, dest_dir):
@@ -40,14 +65,31 @@ def download_images(img_urls, dest_dir):
     with an img tag to show each local image file.
     Creates the directory if necessary.
     """
-    # +++your code here+++
-    pass
+
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+
+    index = file(os.path.join(dest_dir, 'index.html'), 'w')
+    index.write('<html><body>\n')
+
+    i = 0
+    for img_url in img_urls:
+        local_name = 'img%d' % i
+        print 'Retrieving...', img_url
+        urllib.urlretrieve(img_url, os.path.join(dest_dir, local_name))
+
+        index.write('<img src="%s">' % (local_name,))
+        i += 1
+
+    index.write('\n</body></html>\n')
+    index.close()
 
 
 def create_parser():
     """Create an argument parser object"""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--todir',  help='destination directory for downloaded images')
+    parser.add_argument(
+        '-d', '--todir',  help='destination directory for downloaded images')
     parser.add_argument('logfile', help='apache logfile to extract urls from')
 
     return parser
